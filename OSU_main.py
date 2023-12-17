@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 from vmbpy import *
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 # with VmbSystem.get_instance () as vmb:
 #     cams = vmb.get_all_cameras ()
