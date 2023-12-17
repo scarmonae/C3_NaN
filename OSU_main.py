@@ -1,6 +1,9 @@
 import cv2
 import pdb
 
+import os
+from datetime import datetime
+
 from vmbpy import *
 
 # with VmbSystem.get_instance () as vmb:
@@ -209,17 +212,26 @@ def scale_image(image, scale_percent):
 
 
 class FrameConsumer(threading.Thread):
-    def __init__(self, frame_queue: queue.Queue):
+    def __init__(self, frame_queue: queue.Queue, image_directory='captured_images'):
         threading.Thread.__init__(self)
 
         self.log = Log.get_instance()
         self.frame_queue = frame_queue
         self.current_frame = None
+        self.image_directory = image_directory
+
+        # Crea el directorio si no existe
+        if not os.path.exists(self.image_directory):
+            os.makedirs(self.image_directory)
 
     def on_key_press(self, key):
         if key == ord('s'):
             if self.current_frame is not None:
-                file_name = 'captured_image.jpg'
+                # Genera un nombre único basado en la fecha y hora
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                file_name = os.path.join(self.image_directory, f'captured_image_{timestamp}.jpg')
+
+                # Guarda la imagen original
                 cv2.imwrite(file_name, self.current_frame)
                 print(f'Image saved as {file_name}')
 
