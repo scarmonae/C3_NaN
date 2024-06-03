@@ -148,16 +148,11 @@ class FrameConsumer(threading.Thread):
         self.frame_queue = frame_queue
         self.current_frame = None
         self.image_directory = image_directory
-        self.video_writers = {}
-        self.start_time = datetime.now()
+        self.video_writer = None
+        self.recording = False
 
         if not os.path.exists(self.image_directory):
             os.makedirs(self.image_directory)
-
-        # Initialize video writers for each camera
-        for cam_id in ["DEV_1AB22C03B749", "DEV_1AB22C02A26B"]:  # Replace with your actual camera IDs
-            video_file = os.path.join(VIDEO_OUTPUT_DIR, f'video_{cam_id}.avi')
-            self.video_writers[cam_id] = cv2.VideoWriter(video_file, cv2.VideoWriter_fourcc(*'XVID'), 20.0, (FRAME_WIDTH, FRAME_HEIGHT))
 
     def on_key_press(self, key):
         if key == ord('s'):
@@ -166,9 +161,28 @@ class FrameConsumer(threading.Thread):
                 file_name = os.path.join(self.image_directory, f'captured_image_{timestamp}.jpg')
                 cv2.imwrite(file_name, self.current_frame)
                 print(f'Image saved as {file_name}')
+        elif key == ord('v'):
+            if self.recording:
+                self.stop_video_recording()
+                self.recording = False
+                print("Stopped video recording.")
+            else:
+                self.start_video_recording((self.current_frame.shape[1], self.current_frame.shape[0]))
+                self.recording = True
+                print("Started video recording.")
+
+    def start_video_recording(self, frame_size):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        video_file = os.path.join(VIDEO_OUTPUT_DIR, f'video_{timestamp}.avi')
+        self.video_writer = cv2.VideoWriter(video_file, cv2.VideoWriter_fourcc(*'XVID'), 20.0, frame_size)
+
+    def stop_video_recording(self):
+        if self.video_writer:
+            self.video_writer.release()
+            self.video_writer = None
 
     def run(self):
-        IMAGE_CAPTION = 'Multithreading Example: Press <Enter> to exit'
+        IMAGE_CAPTION = 'Multithreading Example: Press <Enter> to exit, <v> to start/stop recording'
         KEY_CODE_ENTER = 13
 
         frames = {}
@@ -197,10 +211,8 @@ class FrameConsumer(threading.Thread):
                 scaled_frame = scale_image(self.current_frame, 25)
                 cv2.imshow(IMAGE_CAPTION, scaled_frame)
 
-                # Write frames to video files
-                for cam_id, frame in frames.items():
-                    if cam_id in self.video_writers:
-                        self.video_writers[cam_id].write(frame.as_opencv_image())
+                if self.recording and self.video_writer:
+                    self.video_writer.write(self.current_frame)
 
             else:
                 self.current_frame = create_dummy_frame()
@@ -213,8 +225,8 @@ class FrameConsumer(threading.Thread):
             else:
                 self.on_key_press(key)
 
-        for writer in self.video_writers.values():
-            writer.release()
+        if self.recording:
+            self.stop_video_recording()
         self.log.info('Thread \'FrameConsumer\' terminated.')
 
 class MainThread(threading.Thread):
