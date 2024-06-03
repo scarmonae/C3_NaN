@@ -54,7 +54,7 @@ import numpy
 
 from vmbpy import *
 
-FRAME_QUEUE_SIZE = 10
+FRAME_QUEUE_SIZE = 10   
 FRAME_HEIGHT = 1944
 FRAME_WIDTH = 2592
 
