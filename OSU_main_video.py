@@ -150,6 +150,8 @@ class FrameConsumer(threading.Thread):
         self.image_directory = image_directory
         self.video_writer = None
         self.recording = False
+        self.start_time = None
+        self.last_frame_time = None
 
         if not os.path.exists(self.image_directory):
             os.makedirs(self.image_directory)
@@ -167,8 +169,10 @@ class FrameConsumer(threading.Thread):
                 self.recording = False
                 print("Stopped video recording.")
             else:
-                self.start_video_recording((self.current_frame.shape[1], self.current_frame.shape[0]))
+                self.start_video_recording((self.scaled_frame.shape[1], self.scaled_frame.shape[0]))
                 self.recording = True
+                self.start_time = cv2.getTickCount()
+                self.last_frame_time = self.start_time
                 print("Started video recording.")
 
     def start_video_recording(self, frame_size):
@@ -208,11 +212,15 @@ class FrameConsumer(threading.Thread):
                 resized_images = [resize_if_required(frames[cam_id]) for cam_id in sorted(frames.keys())]
                 adjusted_images = [cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) if img.shape[2] == 1 else img for img in resized_images]
                 self.current_frame = numpy.concatenate(adjusted_images, axis=1)
-                scaled_frame = scale_image(self.current_frame, 25)
-                cv2.imshow(IMAGE_CAPTION, scaled_frame)
+                self.scaled_frame = scale_image(self.current_frame, 25)
+                cv2.imshow(IMAGE_CAPTION, self.scaled_frame)
 
                 if self.recording and self.video_writer:
-                    self.video_writer.write(self.current_frame)
+                    current_time = cv2.getTickCount()
+                    time_elapsed = (current_time - self.last_frame_time) / cv2.getTickFrequency()
+                    if time_elapsed >= 1.0 / 20.0:
+                        self.video_writer.write(self.scaled_frame)
+                        self.last_frame_time = current_time
 
             else:
                 self.current_frame = create_dummy_frame()
